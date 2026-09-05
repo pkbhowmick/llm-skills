@@ -4,7 +4,7 @@ Skills for Claude Code and Codex. Each directory is one skill (`<name>/SKILL.md`
 
 ## open-code-review
 
-Exhaustive, line-level code review run entirely by the agent. Every changed unit is checked against ten bug-hunting dimensions (logic, edges, error paths, concurrency, resources, security, data integrity, contracts, performance, tests) plus a strict style lens. Everything found is reported, down to nits, with a per-file coverage grid. Then a skeptic pass that can only dismiss a finding with a cited line, a second cold read, and a per-file coverage grid. No CLI, no API key.
+Exhaustive, line-level code review run entirely by the agent. Whole files are read, not hunks. Every changed unit gets a contract map (inputs and trust, assumptions and the line that establishes each, callers including indirect ones, callees including library calls, removed code, refactor equivalence), then is checked against ten bug-hunting dimensions (logic, edges, error paths, concurrency, resources, security, data integrity, contracts, performance, tests), an absence pass for what the diff should contain but does not, and a strict style lens. A skeptic pass can dismiss a finding only with a cited line, and every dismissal is reported. Then a second cold read, a verdict that follows fixed rules, and a per-unit coverage grid. No CLI, no API key.
 
 Supports workspace changes, branch ranges, and single commits. Optional project rules via `.opencodereview/rule.json` or `REVIEW_RULES.md`.
 
