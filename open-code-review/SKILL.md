@@ -20,7 +20,7 @@ metadata:
     - https://github.com/trailofbits/skills
     - https://github.com/anthropics/claude-code-security-review
     - https://github.com/obra/superpowers
-  version: "3.1.0"
+  version: "3.2.0"
 ---
 
 # Open Code Review — exhaustive, adversarial
@@ -37,6 +37,13 @@ metadata:
 - **Nothing is dropped silently.** A finding leaves the report only through the Dismissed section, with the line that disproves it.
 
 If the user explicitly asks for a *quick* review: skip the contract map, the absence pass, and the nit lens; run dimensions 1 to 6 (security is never skipped); keep the skeptic pass, positioning, and the grid. Otherwise run all of it.
+
+## Working style
+
+- **Batch reads.** Before each tool round, list privately what you need next, then request every item that does not depend on another's result in that one response: all changed files and their old versions together, then all caller and callee greps together, then all definitions those greps named. One read per turn is a wasted turn.
+- **Narrate briefly.** Say in one line what you are about to do. After each step and each batch of files, post a short note: what you found, what is next. The report at the end must stand on its own for a reader who saw none of the notes.
+- **Finish in one turn.** The review was requested; deliver it. Do not end the turn with a plan, a "next I'll…", or a "shall I continue?". Large diffs are batched, not deferred. Stop early only when context runs out, and then report per the Large diffs gotcha. The only question that may end a turn early is one whose answer changes what the review is of (wrong base branch, wrong mode).
+- **Plain prose.** Say what you mean in literal words. No metaphor, no flourish, no stock phrases. Quoted code sits in backticks with a line number; everything else is your own wording.
 
 ## Step 1: Scope
 
@@ -212,7 +219,7 @@ Rules of the pass:
 - `path/to/consumer.go:Consume` — caller of `Store` not opened: context ran short
 ```
 
-One grid row per unit, named `path:symbol` (or `path` for a file-level unit such as a migration or config block); a file with several changed units gets several rows. Cells: `✓` clear, `n/a` does not apply, `—` not checked (listed under Skipped and limits), or the highest severity letter found (`C`/`H`/`M`/`L`). Never blank, never `✓` for a dimension you did not run on that unit. `n/a` needs a reason you could say in five words (pure function, no I/O, test file); if you cannot, it is not `n/a`. Empty sections keep their heading and say "none".
+Use the template's headings and bullets exactly, even for a one-finding review; do not collapse the report into prose. One grid row per unit, named `path:symbol` (or `path` for a file-level unit such as a migration or config block); a file with several changed units gets several rows. Cells: `✓` clear, `n/a` does not apply, `—` not checked (listed under Skipped and limits), or the highest severity letter found (`C`/`H`/`M`/`L`). Never blank, never `✓` for a dimension you did not run on that unit. `n/a` needs a reason you could say in five words (pure function, no I/O, test file); if you cannot, it is not `n/a`. Empty sections keep their heading and say "none".
 
 **Before sending**, check the report against itself:
 
@@ -227,16 +234,19 @@ One grid row per unit, named `path:symbol` (or `path` for a file-level unit such
 
 - "review and fix": apply critical and high directly; list medium for a human decision; leave low and nit as a list unless the user says "fix everything".
 - "review": report and stop. Ask before changing anything.
+- Fix the finding and nothing else. A pre-existing bug, performance concern, or cleanup outside the findings you are fixing stays in the report as a follow-up unless the fix cannot work without it.
+- Edit surgically; do not rewrite a file to change a few lines.
+- Add a test only where the repo already keeps tests for this kind of change, sized like the neighbouring tests, one per fixed behaviour. Scratch checks you ran to verify the fix are not committed.
 - Re-review your own fix: run the dimensions over the lines you changed before reporting. A fix that adds a bug is worse than the finding.
 - Confirm before committing. Never commit unasked.
 
 ## Gotchas
 
 - **Versions.** Never flag a package, image, action, or runtime version as nonexistent, unreleased, or invalid from memory; your knowledge has a cutoff and the diff was written after it. Flag a version only if it is syntactically malformed, an unexplained downgrade, carries a CVE you can cite by id, or is unpinned where pinning is expected.
-- **APIs.** The mirror rule: never accept a library or internal call from memory either. Wrong name, arity, argument order, or return shape is a bug; verify against the definition (Step 4).
+- **APIs.** The mirror rule: never accept a library or internal call from memory either. Wrong name, arity, argument order, or return shape is a bug; verify against the definition (Step 4). Recognising the library is not knowing its current signature; familiarity is the reason to open it, not the reason to skip it.
 - **Untracked files** are in scope in workspace mode. Read them whole; all of it is new.
 - **Tests** are reviewed (dimension 10, nits) and also *used*: read them to learn what the author expects, then check production code matches.
-- **Large diffs**: batch by file, keep the checklist and grid current, never summarise a file you did not open. If context runs short, report what is done and mark the rest `—` in the grid and `skipped: not reached` under Skipped and limits rather than pretending coverage.
+- **Large diffs**: batch by file, keep the checklist and grid current, never summarise a file you did not open. If context runs short, report what is done and mark the rest `—` in the grid and `skipped: not reached` under Skipped and limits rather than pretending coverage. If the conversation is compacted mid-review, the summary must carry forward exactly: the checklist with each file's status, the risk plan, every finding with its `path:line`, evidence, and trigger, every dismissed finding with its disproving line, and the grid so far. Do not re-derive from memory a line you no longer have open; re-read it.
 - **Renames**: review the content diff (`-M`), not the delete plus add.
 - **Binary or huge files**: skip with reason; do not paste them into context.
 - **Do not trust the PR description** about what was tested, or that a change is "just a refactor", "no functional change", or "unchanged". Check the tests; prove the equivalence (Step 4).
