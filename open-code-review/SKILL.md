@@ -20,7 +20,7 @@ metadata:
     - https://github.com/trailofbits/skills
     - https://github.com/anthropics/claude-code-security-review
     - https://github.com/obra/superpowers
-  version: "3.2.0"
+  version: "3.3.0"
 ---
 
 # Open Code Review — exhaustive, adversarial
@@ -135,7 +135,7 @@ Read the repo's linter and formatter config first. A violation of a configured r
 
 Re-read every hunk once more for the small stuff. Report all of it, tagged `nit`, one line each:
 
-naming (unclear, inconsistent within the diff, misleading, plural/singular drift), dead code and unused imports, duplication that should be a helper, magic numbers, missing or stale comments and docstrings, typos, formatting inconsistent with the surrounding file, TODO/FIXME without an issue reference, overly long functions, boolean parameters, inconsistent error message style, import order, trailing whitespace, missing trailing newline, commented-out code, leftover debug output (`console.log`, `print`, `fmt.Println`), non-idiomatic constructs, public API without a doc comment.
+naming (unclear, inconsistent within the diff, misleading, plural/singular drift), dead code and unused imports, duplication that should be a helper, magic numbers, missing or stale comments and docstrings, junk comments (restates the code it sits on, describes the change instead of the code ("added", "now uses", "changed to"), a docstring that only repeats the signature, section banners and separator lines, author or date stamps, `#region` for nothing, generic placeholders left in ("TODO: implement", "your code here"), a narration of every step where the code already reads plainly), typos, formatting inconsistent with the surrounding file, TODO/FIXME without an issue reference, overly long functions, boolean parameters, inconsistent error message style, import order, trailing whitespace, missing trailing newline, commented-out code, leftover debug output (`console.log`, `print`, `fmt.Println`), non-idiomatic constructs, public API without a doc comment.
 
 Nits are reported, never silently applied, never inflated.
 
