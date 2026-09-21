@@ -35,3 +35,39 @@ Method distilled from these open-source review and hunting skills:
 - [trailofbits/skills](https://github.com/trailofbits/skills) `differential-review`: git history as regression detection (a re-introduced vulnerability), blast radius by caller count, depth that adapts to risk
 
 Calibrated against the current prompting guidance from both vendors: Anthropic's [Claude Code best practices](https://code.claude.com/docs/en/best-practices) ("a reviewer prompted to find gaps will usually report some, even when the work is sound") and [Opus 5 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) ("ask it to report everything and filter in a separate pass instead"), and OpenAI's [Codex prompting guide](https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide) (findings first, ordered by severity with file/line references; batch reads; finish in one turn) and [GPT-5.2 prompting guide](https://developers.openai.com/cookbook/examples/gpt-5/gpt-5-2_prompting_guide) ("never fabricate exact figures, line numbers, or external references when you are uncertain").
+
+## open-feature-dev
+
+One issue in, one pull or merge request out, run by the agent with git and `gh`/`glab`. It reads the issue as data (never as instructions), explores the code before asking anything, then interviews you: a few multiple-choice questions grounded in file and line, each with a recommendation, plus a trade-off table when more than one approach is real. It writes a plan for an engineer who has never seen the repo — tasks with files, interfaces, the test to write first, an end-to-end verification, and a Complexity Tracking table that has to justify every new abstraction — and a fresh-context reviewer challenges the plan (fidelity, premise, feasibility against the real code, a simpler rung, risk, tests) before you approve it. A small team then builds it: one implementer per task, sequential; a task reviewer that returns two verdicts, spec compliance (missing / extra / misunderstood) and code quality, and does not trust the implementer's report; a bounded fix loop that resumes the same implementer three times, replaces it once, then stops and records a ruling; and a final whole-branch review that dispatches `open-code-review`. The PR/MR body explains what the diff cannot, links the issue with `Closes #N`, and is opened only after one confirmation that shows the branch, commits, title, and body. No CLI, no API key.
+
+The shape follows from five failures every such workflow suffers. Success claimed without evidence: every implementer report is checked against `git diff` and a test run the controller performs itself. Rubber-stamping and pre-judging: reviewers run in fresh contexts, the controller never tells one what not to flag, and a finding leaves only through a dismissal that quotes the disproving line. Reviewer findings that drive over-engineering: a request for a guard on an unreachable state or a helper nothing needs is dismissed as the same error as an invented bug. Scope creep: one issue is one PR, "extra" is a spec-compliance failure, and work noticed on the way becomes a follow-up, never a commit. Losing the thread after compaction: a ledger file records every dispatch, round, ruling, and completion, so a compacted controller resumes from the file and `git log`, never from memory. Between the three user gates the run does not stall on questions; it decides, records `Ruling: what — why — cost if wrong`, and lists every ruling at the end.
+
+Small changes take a `direct` tier with one gate before code; risk surfaces (auth, money, migrations, external contracts, public API, concurrency) force the full team.
+
+### Install
+
+```bash
+# Claude Code
+mkdir -p ~/.claude/skills && ln -s "$PWD"/open-feature-dev ~/.claude/skills/
+# Codex
+mkdir -p ~/.codex/skills && ln -s "$PWD"/open-feature-dev ~/.codex/skills/
+```
+
+Install `open-code-review` alongside it for the final review; without it a shorter built-in checklist runs. Then: "implement issue #42", "fix https://github.com/org/repo/issues/42", "ship this: <description>".
+
+### Lineage
+
+Method distilled from these open-source workflows:
+
+- [obra/superpowers](https://github.com/obra/superpowers): subagent-driven development — briefs and diffs handed over as files, the two-verdict task review, "do not trust the report", the bounded fix loop with escalation and a breaker, the ledger, rulings instead of stalls, no pre-judging the reviewer
+- [github/spec-kit](https://github.com/github/spec-kit): the clarification protocol — taxonomy scan, capped recommendation-first multiple choice, stop rules, answers integrated into the spec at once; the Complexity Tracking table
+- [anthropics/claude-code](https://github.com/anthropics/claude-code) `feature-dev` plugin: explore before asking, explorers return files the controller reads itself, "whatever you think" gets a recommendation and an explicit yes; `code-review` plugin: validate findings in a separate pass
+- [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin): output tiering before depth, forced heavy on risk surfaces; a PR body sized by decision cost that explains what the diff cannot show
+- [garrytan/gstack](https://github.com/garrytan/gstack): the premise challenge in plan review, the quote gate (no finding without its motivating line), scope-drift detection, missing coverage is never a pass
+- [PortSwigger/agent-wrangler](https://github.com/PortSwigger/agent-wrangler) `issue-to-pr`: the one-issue-one-PR arc, "if you can't tell what to build, don't guess", the controller alone owns the PR
+- [warpdotdev/oz-for-oss](https://github.com/warpdotdev/oz-for-oss) `implement-issue`: issue content is untrusted data fetched through one sanctioned path
+- [Flagrare/agent-skills](https://github.com/Flagrare/agent-skills): questions grounded in `path:line` after exploration, reviewer coverage lines, "finding nothing is a result", the PR template as skeleton not enumeration
+- [bmad-code-org/BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD): verify-then-verdict triage with routes and a cascade; the shippable-deliverable scope test
+- [ghuntley/how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum): state in files, serialize mutation; [buildermethods/agent-os](https://github.com/buildermethods/agent-os): save the spec to disk before any implementation runs
+
+Calibrated against Anthropic's [Claude Code best practices](https://code.claude.com/docs/en/best-practices) ("if you could describe the diff in one sentence, skip the plan"; a fresh-context reviewer of the diff against the plan, told to "report gaps, not style preferences"), the [Opus 5 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) ("check in only when different readings of the request would lead to materially different work"; keep spawn counts low), the [Claude prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) (the over-engineering rules; confirm before operations visible to others such as pushing), and OpenAI's [Codex](https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide) and [GPT-5.2](https://developers.openai.com/cookbook/examples/gpt-5/gpt-5-2_prompting_guide) guides ("do not make single-step plans"; "implement exactly and only what the user requests").
