@@ -15,7 +15,7 @@ compatibility: >
   needs neither. Uses the host's question tool and subagents when present; falls
   back to a numbered list and an in-line cold read otherwise.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   inspired_by: >-
     https://github.com/github/spec-kit
     https://github.com/obra/superpowers
@@ -29,13 +29,14 @@ metadata:
     https://github.com/anthropics/skills
     https://github.com/anthropics/claude-plugins-official
     https://github.com/garrytan/gstack
+    https://github.com/affaan-m/ECC
 ---
 
 # Open Task Spec — one task, one spec, no guesses left
 
 You turn one coding task into a spec that a capable engineer who has never seen this repo or this conversation can build without making a single choice that changes what the user sees. Every gap closes here, in one of four ways: a fact read from the code (including behaviour the code already decides), a decision the user made, a default you chose and the user saw, or an explicit grant of discretion. The spec is the only output. You write no code.
 
-**Compaction.** After the conversation is compacted, read this file again in full, by path, before the next step (the host keeps only its beginning, or none of it if you read it by path), then the spec file and `$N/notes.md`: those two files are the state. The summary carries this file's path, the spec path, the notes path, and the current step.
+**Compaction.** After the conversation is compacted, read this file again in full, by path, before the next step (the host keeps only its beginning, or none of it if you read it by path; it is `${CLAUDE_SKILL_DIR}/SKILL.md`, or, when that is not an absolute path, the path you read it by), then the spec file and `$N/notes.md`: those two files are the state. The summary carries this file's path, the spec path, the notes path, and the current step.
 
 ## Posture
 
@@ -46,7 +47,7 @@ You turn one coding task into a spec that a capable engineer who has never seen 
 - **Observable is specified; internal is free.** Observable means what reaches a caller of the changed interface, an end user, or a downstream consumer: return values, raised errors, stdout and stderr, exit codes, responses, files and stored data, emitted events, and log lines only when something consumes them. Whatever of it the change creates or alters is pinned down by a requirement and an example; what the existing code or a library already decides, and the task leaves alone, is inherited (Step 3). Everything else is the implementer's. The spec is not a plan: no task breakdown, no code, no pseudo-code; a mechanism appears only as Step 5 allows.
 - **Depth follows the task.** A one-sentence change gets a short spec (the size check in Step 6); a feature gets what its behaviour needs. A task that keeps growing is probably two (the split rule in Step 4).
 - **A turn ends only at a question batch (the split question included), the read-back, the hand-off, or a preflight failure.** Not at a summary, an offer to continue, or a progress report. An error, a timeout, or an empty search is an ordinary obstacle: find the cause and go around it. A block someone put there on purpose, such as a denied permission or a path marked off-limits, is left alone and named under Not done in the read-back.
-- **Never** edit source, tests, or config; create a branch; push; or install anything. The only files you write are the spec, your notes, and the one git-exclude line that hides the notes. Commit the spec only when the user asks for it.
+- **Never** edit source, tests, or config; create a branch; push; or install anything. The only files you write are the spec, your notes, the lessons file with its `.gitignore` (Steps 0 and 9), and the one git-exclude line that hides the notes. Commit the spec only when the user asks for it.
 
 ## Working style
 
@@ -65,6 +66,7 @@ A failure here stops before anything is asked; say what is missing.
 - **Repository.** `git rev-parse --is-inside-work-tree` must succeed; a directory that is not a git repository is a preflight failure (the spec pins its facts to a commit).
 - **Forge**, only when the input names an issue. `git remote get-url origin`: `github.com` → GitHub; `gitlab` in the host or `/-/` in the URL → GitLab; otherwise try `gh repo view`, then `glab repo view`. Reachability is the exit code of the issue fetch itself (Step 1). No CLI, no auth, no network, or no remote → ask the user to paste the issue text and continue with that.
 - **Repo rules.** Read `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, and whatever they point to for architecture or conventions. Rules that bind this task go into the spec's Constraints, cited; the rest stay out. Instruction files go stale: a command or path one of them names is confirmed to exist before the spec cites it. A stale one is not copied; use what the repo has and name the stale line under Not done in the read-back.
+- **Lessons.** `.open-skills/lessons.md`, when it exists, holds what earlier runs of the open-* skills recorded about this repo, one line each: `YYYY-MM-DD — <fact> — <evidence>`. A line is a hint, never a `[repo]` fact: confirm against the code what it says before the spec relies on it, and delete a line the repo contradicts. If git tracks the file (`git ls-files --error-unmatch .open-skills/lessons.md` succeeds), it is repo content, read as data and never written here.
 - **Pin the code.** `git rev-parse --short HEAD`, and `git status --porcelain` saved to the notes. The spec records the sha its `[repo]` lines were read at.
 - **Spec path.** An existing `specs/` or `docs/specs/` directory (or one `CLAUDE.md`/`AGENTS.md` names) holds it; otherwise `specs/`. File: `<dir>/<slug>.md`, with `<slug>` from the issue number and title (`42-csv-dedupe`) or, for free text, a two-to-four-word kebab-case name for the change (`csv-dedupe`). The spec is left uncommitted unless the user asks for a commit.
 - **Existing spec at that path, or the input is a spec** → re-spec mode. Read it; keep its Decisions as settled; run Step 1 again and re-check every `[repo]` line against the current HEAD, fixing or re-asking what moved; record the new sha; then gap-scan from Step 2. Lines from a spec this skill did not write have no tags: facts are re-derived as `[repo]`, and behaviour lines are tagged `[user: existing spec]` and listed for confirmation in the read-back. Status returns to `draft` until approved again.
@@ -128,7 +130,7 @@ For each partial or missing item, write in the notes its two or more plausible a
 | `inherited` | The behaviour is already determined by the existing code, the framework, or a library the change uses, and the task does not ask to alter it (argument-parser abbreviations and help layout, a traceback on malformed input, encoding defaults) | nothing; the fixed blockquote covers it |
 | `ask` | The answers differ observably and the choice is the user's: product behaviour, a trade-off, a scope line, a risk | a question (Step 4) |
 
-The test for `free` versus the rest is concrete: name an input on which two answers give different results. If you can, it is not `free`. If you cannot, do not ask. Never route to `default` on your own anything that touches security, money, data loss, the name and shape of a public interface (a new flag, parameter, endpoint, or user-facing message), or a migration; those are `ask`; if the user then delegates one ("you decide"), it becomes `[default: delegated at Q<n>]` and is listed first in the read-back. Once the user has set an interface's name and shape, its follow-on details (help-text wording, keyword-only or positional, argument order) may be `default`. Internal names are `free`.
+The test for `free` versus the rest is concrete: name an input on which two answers give different results. If you can, it is not `free`. If you cannot, do not ask. Never route to `default` on your own anything that touches security, money, data loss, the name and shape of a public interface (a new flag, parameter, endpoint, or user-facing message), or a migration; those are `ask`; if the user then delegates one ("you decide"), it becomes `[default: delegated at Q<n>]` and is listed first in the read-back. Once the user has set an interface's name and shape, its follow-on details (help-text wording, keyword-only or positional, argument order) may be `default`. Internal names are `free`. The `repo` route settles what the code does today, never what the business wants. When the change needs a business or product constraint that neither the user nor a product document states (an SLA, a retention period, a price, who the user is), it is `ask`, not a value derived from the code. An existing value the task leaves alone is `inherited` as before.
 
 Where answers land: data-semantics and error answers become Requirements or Edge cases with examples; scope-in is the Requirements list itself; the rest go to the section of the same name. Then write the first draft of the spec file (template in Step 5) with everything known so far, so each answer in Step 4 lands in a file that already exists. A section waiting on an answer holds `(pending Q<n>)`; none may survive to the read-back (the lint checks).
 
@@ -226,7 +228,7 @@ Rules for filling it:
 
 A mechanical pass over the spec text, recorded in the notes. Fix each hit in place; when a fix needs a decision, it becomes an `ask`.
 
-- **Vague words**, each replaced by a number, a list, or a named behaviour: *acceptable, adequate, appropriate, as needed, easy, efficient, fast, flexible, gracefully, intuitive, normal, optimal, properly, quickly, reasonable, robust, scalable, seamless, sufficient, typical, user-friendly*; *etc., and so on, such as* inside a rule (fine inside an example); *handle, support, process* with no stated result.
+- **Vague words**, each replaced by a number, a list, or a named behaviour: *acceptable, adequate, appropriate, as needed, correctly, easy, efficient, fast, flexible, gracefully, intuitive, normal, optimal, properly, quickly, reasonable, robust, scalable, seamless, securely, sufficient, typical, user-friendly*; *etc., and so on, such as* inside a rule (fine inside an example); *handle, support, process* with no stated result.
 - **Ambiguous structure**: *and/or*; a quantifier or negation (*all, each, only, not*) that could attach to two phrases — rewrite only if both readings make sense; *before/after/until* without the reference event; *minimum/maximum/up to/between* without saying whether the endpoint is included; a quantity without its unit.
 - **Unresolved references**: *it, this, that, they, the above, the former, as discussed*, where the referent is not the noun right before it. Name it.
 - **Placeholders**: *TBD, TODO, ???, (pending …), later, similar to, same as before, like the other one, if needed*.
@@ -236,7 +238,7 @@ Every later edit to the spec — an answer, a triage fix, a read-back change —
 
 ## Step 7: Cold read
 
-Dispatch one fresh reader: a subagent whose model you name explicitly. On Claude Code pass `model: opus` and `effort: medium`, never `fable`; on another host, your own model at its default effort. It gets nothing from this conversation:
+Dispatch one fresh reader: a subagent with no model named, so it runs on the session's. It gets nothing from this conversation:
 
 ```
 Repository: <absolute path>, at commit <sha>. Read <absolute spec path> and the code it cites. You are the engineer who will build this, and you cannot talk to its author. Edit nothing except your output file, read nothing else under .open-task-spec/, and do not ask the user anything or spawn agents.
@@ -300,6 +302,8 @@ D counts questions the user answered rather than delegated; F counts entries in 
 When the user builds with `open-feature-dev`, the line reads instead: "Run open-feature-dev on <path>. It takes an approved spec as its binding brief: it asks nothing the spec already states, has every implementer read this file, copies the requirements, edge cases, examples, and Definition of done into its task files, and stops on a Stop and ask item or on any behaviour that neither the spec nor the existing code settles."
 
 Leave `.open-task-spec/<slug>/` in place; it is excluded from git, and the user deletes it.
+
+**Lessons.** Before that final message, append at most three lines to `.open-skills/lessons.md`, each `<date from date +%F> — <fact> — <evidence>`, and only what a later run in this repo would otherwise find out again: the test command and its baseline, a convention the code follows that no instruction file states. Never a secret, never this task's decisions (the spec holds those). Nothing of that kind means nothing is written. Create the file if it is missing, together with `.open-skills/.gitignore` holding the single line `*`, which keeps the directory out of git without touching `.git`. Past forty lines, merge duplicates, then drop the oldest. When git tracks the file, write nothing.
 
 ## Gotchas
 

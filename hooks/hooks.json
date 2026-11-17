@@ -1,0 +1,16 @@
+{
+  "description": "open-feature-dev push gate: in a repo that holds an open-feature-dev workspace, ask before git push, gh pr create, and glab mr create.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -d \"${CLAUDE_PROJECT_DIR:-.}/.open-feature-dev\" ] && grep -qE '(git( +(-C|-c) +[^ ]+| +--?[A-Za-z][^ ]*)* +push|gh +pr +create|glab +mr +create)([^[:alnum:]_-]|$)' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"open-feature-dev push gate: confirm this push or PR/MR command\"}}'; true"
+          }
+        ]
+      }
+    ]
+  }
+}

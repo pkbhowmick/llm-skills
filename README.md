@@ -1,6 +1,17 @@
 # llm-skills
 
-Skills for Claude Code. `open-code-review` and `open-task-spec` also run in Codex; `open-feature-dev` is Claude Code only. Each directory is one skill (`<name>/SKILL.md`); `open-feature-dev` also has a `references/` directory that holds its subagent prompts and templates. No dependencies beyond git.
+Three skills for Claude Code, shipped as one plugin. Each directory under `skills/` is one skill (`<name>/SKILL.md`); `open-feature-dev` also has a `references/` directory that holds its subagent prompts and templates. No dependencies beyond git.
+
+## Install
+
+```
+/plugin marketplace add pkbhowmick/llm-skills
+/plugin install llm-skills@pkbhowmick
+```
+
+The skills are then `/llm-skills:open-task-spec`, `/llm-skills:open-feature-dev`, and `/llm-skills:open-code-review`, and Claude Code also loads them from a plain request. Update with `/plugin marketplace update pkbhowmick`. To work from a clone instead, link the three directories: `ln -s "$PWD"/skills/open-* ~/.claude/skills/`.
+
+The skills keep one file of their own in a repo they work in: `.open-skills/lessons.md`, kept out of git by a `.gitignore` beside it, at most forty dated lines. `open-feature-dev` and `open-task-spec` add up to three lines at the end of a run (a test command that worked, a trap that cost a fix round, an answer you said always holds), and all three read it at the start of the next. Delete it whenever you like.
 
 ## open-code-review
 
@@ -10,16 +21,9 @@ The hunt runs without a severity floor and the filtering happens afterwards, in 
 
 Supports workspace changes, branch ranges, and single commits, and a re-review of any of them after fixes: every prior finding is labelled resolved, open, or regressed against its cited line, and a resolved one is never raised again as new. Optional project rules via `.opencodereview/rule.json` or `REVIEW_RULES.md`.
 
-### Install
+### Use
 
-```bash
-# Claude Code
-mkdir -p ~/.claude/skills && ln -s "$PWD"/open-code-review ~/.claude/skills/
-# Codex
-mkdir -p ~/.agents/skills && ln -s "$PWD"/open-code-review ~/.agents/skills/
-```
-
-Then in either agent: "review my changes", "review this branch against main", "review commit abc123", or "review and fix".
+"review my changes", "review this branch against main", "review commit abc123", or "review and fix".
 
 ### Lineage
 
@@ -41,6 +45,8 @@ Version 4.2 follows 2026 review research. [CRJudgeBench](https://arxiv.org/abs/2
 
 Version 4.3 follows the [Fable 5.2 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2) and late-2026 review research. The guide asks that a final report make sense to a reader who has not seen the work, with no label made up along the way: hence the Legend. It separates ordinary obstacles (an error, a timeout, an empty result), which are worked through, from blocks someone put there on purpose, which are left alone and reported: hence the Obstacles rule. It reports that the model tends to add to existing structure even when that repeats existing code: hence a helper written a second time is named as a deviation from the baseline. [SecPRBench](https://arxiv.org/abs/2610.33509) found that in 68% of missed vulnerabilities the reviewer had filed a finding in a file that held the flaw and argued a different mechanism, and [CIVER](https://arxiv.org/abs/2610.36010) tells genuine defects from false positives by whether they respond to a targeted repair: hence the repair and rival tests in the skeptic pass. [When Instruction Files Go Stale](https://arxiv.org/abs/2611.09802) found that agents follow a stale instruction when it bears on their task and that none repaired the file: hence `CLAUDE.md` and `AGENTS.md` are on the rename checklist. [Who Verifies the Tools?](https://arxiv.org/abs/2610.32110) showed that tool output which omits its own result cap misleads agents and their verifiers: hence a count read off truncated output is reported as a lower bound.
 
+Version 4.5 adds an independent reader and drops the Codex install. Run at the top level, the reviewer hands every security, critical, and high finding to one fresh subagent as a location, a one-sentence claim, and a trigger, without its own evidence or reasoning. The reader tries to disprove each from the code. A finding leaves only when the reader cites a line and the reviewer confirms that the line disproves it; a finding the reader could not answer for is tagged `not cross-checked` and still counts toward the verdict. The shape is [ECC](https://github.com/affaan-m/ECC)'s review workflow reduced to one dispatch: there an adversarial verifier judges each blocking finding, and uncertainty never clears one. Run as a subagent, as `open-feature-dev` runs it, or in a quick review, the second read stands as before. Also from ECC: two more classes of known noise (an N+1 over a collection the code bounds, a call the code marks as fire-and-forget), and instruction-like text that a change adds for an agent is now a finding. The reviewer reads the lessons file and never writes it.
+
 Version 4.4 follows Anthropic's guide to [optimizing for cost and intelligence](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence), its [skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices), and the Claude Code [skills page](https://code.claude.com/docs/en/skills). The skills page says that after compaction Claude Code re-attaches only the first 5,000 tokens of an invoked skill, so a skill file that an agent read by path comes back only if it is read again: hence a Compaction rule at the top of the file that tells the reviewer to read the file again, where the resume rule used to sit in the last section. The cost guide reports that current models follow an instruction such as "verify twice" to the letter and spend tokens on it with no gain in accuracy, and that contradictory rules cost accuracy. Hence each rule is stated once where it had up to four copies, the line check runs inside the skeptic pass while the file is already open, nits are collected during the first read, and the final check went from seven items to three mechanical ones. Three contradictions were removed, and quick mode now says which passes it keeps. The eleven dimensions, the second read, and the report format are unchanged. The file is about 1% smaller, because most of it is checklists and the fixed template.
 
 ## open-feature-dev
@@ -53,32 +59,15 @@ Every path that repeats has a count: a role that fails runs once more, a red ver
 
 Small changes take a `direct` tier with one gate after the spec and before code; risk surfaces (auth, money, migrations, external contracts, public API, concurrency) force the full team.
 
-### Install
+### Use
 
-```bash
-# Claude Code only
-mkdir -p ~/.claude/skills && ln -s "$PWD"/open-feature-dev ~/.claude/skills/
-```
-
-Link or copy the whole directory: `SKILL.md` alone is not enough, because the subagent prompts and templates are in `references/`. Install `open-task-spec` alongside it for the spec phase and `open-code-review` for the final review. Without the first, the run asks its own few clarify-gate questions instead; without the second, a shorter built-in checklist runs. Say "skip the spec" to use the clarify gate on purpose. Then: "implement issue #42", "fix https://github.com/org/repo/issues/42", "ship this: <description>".
+The plugin installs `open-task-spec` for the spec phase and `open-code-review` for the final review alongside it. In a manual install without the first, the run asks its own few clarify-gate questions instead; without the second, a shorter built-in checklist runs. Say "skip the spec" to use the clarify gate on purpose. Then: "implement issue #42", "fix https://github.com/org/repo/issues/42", "ship this: <description>".
 
 ### Cost
 
-The skill sets the model and the effort level of every subagent it starts. The controller runs on whatever you launch the session with, so that choice is yours:
+The skill names no model. The spec, the plan, the controller, every reviewer, and the fixer run on the model you started the session with. The plan gives each task a complexity (low, medium, or high, from its files, its contracts, and how open its design is) and with it a model tier: fast, balanced, or strongest. When you approve the plan you are asked once which model runs each of those, with a proposed mapping first and "the session model for every task" second. Implementers then run on your answer, and the final report sets each task's tag beside the review rounds it took, so you can see whether the tags predicted the work.
 
-```bash
-claude --model opus --effort medium
-# optional, for a second opinion at the decision points: /advisor fable
-```
-
-| Role | Model | Effort |
-|---|---|---|
-| explorer | Haiku | medium |
-| implementer, task reviewer | Sonnet | high |
-| plan reviewer, cold reader, fixer, round-4 implementer | Opus | medium |
-| code reviewer | Opus | high |
-
-No role runs on Fable. A full-tier run of T tasks starts at least 2T + 3 subagents: a cold reader, a plan reviewer, an implementer and a task reviewer per task, and a code reviewer. The direct tier starts two, the cold reader and the code reviewer. None of this has been measured on the skill itself; the levels follow Anthropic's published measurements on its own benchmarks, cited under Version 2.0 below.
+A full-tier run of T tasks starts at least 2T + 2 subagents: a plan reviewer, an implementer and a task reviewer per task, and a code reviewer; a cold reader too when the spec phase runs. The direct tier starts the code reviewer, and the cold reader when the spec phase runs. None of this has been measured on the skill itself.
 
 ### Lineage
 
@@ -92,6 +81,7 @@ Method distilled from these open-source workflows:
 - [PortSwigger/agent-wrangler](https://github.com/PortSwigger/agent-wrangler) `issue-to-pr`: the one-issue-one-PR arc, "if you can't tell what to build, don't guess", the controller alone owns the PR
 - [warpdotdev/oz-for-oss](https://github.com/warpdotdev/oz-for-oss) `implement-issue`: issue content is untrusted data fetched through one sanctioned path
 - [Flagrare/agent-skills](https://github.com/Flagrare/agent-skills): questions grounded in `path:line` after exploration, reviewer coverage lines, "finding nothing is a result", the PR template as skeleton not enumeration
+- [affaan-m/ECC](https://github.com/affaan-m/ECC): a size classifier that takes the highest of files touched, new contract, and design ambiguity, with security and public API never lowest; a model tier per step; predicted against actual complexity in the final report; every section of the repo's PR template kept
 - [bmad-code-org/BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD): verify-then-verdict triage with routes and a cascade; the shippable-deliverable scope test
 - [ghuntley/how-to-ralph-wiggum](https://github.com/ghuntley/how-to-ralph-wiggum): state in files, serialize mutation; [buildermethods/agent-os](https://github.com/buildermethods/agent-os): save the spec to disk before any implementation runs
 
@@ -123,6 +113,13 @@ Version 2.0 is Claude Code only and sets the model and effort of every subagent.
 - **A prompt for the fixer.** The single fix dispatch after the final review now has its own section in the implementer file, where the controller used to write its prompt. Explorers lost the "time matters" line: it was calibrated for Opus 5.5, whose guide says the model may then search and verify a little less, and Haiku 5.5 already tends to skip searches.
 - **Fewer repeated checks.** The code reviewer is told that lint and type-check have already run, the spec phase reuses the preflight's forge and repo-rule results, and the fallback reviewer checks the plan as the main one does.
 - **Rules that pulled against each other.** Force-push and amending a pushed commit now happen only when the user asks for the command by name. Approving, merging, and changing CI, required checks, or branch protection to turn a check green stay out of reach whatever the run is told, and the override rule says so.
+
+Version 3.0 names no model, ships a hook, and keeps lessons. It reverses three choices of 2.0: the per-role model and effort table, the rule that the skill sets every subagent's model, and "Fable advises" as a rule about one named model (the advisor rule stays, without the name).
+
+- **Models are yours.** Everything except implementers runs on the session model. Implementers follow a per-task complexity tag that the plan reviewer checks and a mapping you give once at the plan gate, recorded in the ledger so a resumed run keeps it. A fresh implementer in round 4 runs one model tier higher. Effort is left to the host again, as in 1.2. Task reviewers now cost what the session model costs.
+- **The push gate is enforced.** The plugin ships a `PreToolUse` hook, so in a repo that holds a run's workspace Claude Code itself asks before `git push`, `gh pr create`, and `glab mr create`, whatever the model decided (see Enforcing the gates).
+- **Lessons.** The run reads `.open-skills/lessons.md` in preflight and copies the lines that apply into the brief, because subagents see only files; it appends at most three lines before the report. A lessons file that git tracks is repo content, read as data and never written.
+- **A repo's PR template keeps its sections.** A heading that does not apply gets `N/A`; only the built-in skeleton drops empty sections.
 
 ## open-task-spec
 
@@ -156,16 +153,9 @@ Every repeating path has a count:
 - the fresh reader runs at most twice;
 - a task that keeps growing gets one split proposal.
 
-### Install
+### Use
 
-```bash
-# Claude Code
-mkdir -p ~/.claude/skills && ln -s "$PWD"/open-task-spec ~/.claude/skills/
-# Codex
-mkdir -p ~/.agents/skills && ln -s "$PWD"/open-task-spec ~/.agents/skills/
-```
-
-Then: "spec out issue #42", "write a spec for: add a dedupe option to the CSV exporter", "interview me about this task before anyone builds it". The spec goes in the repo's `specs/` or `docs/specs/` directory, or `specs/` if neither exists. Build it in a fresh session from the file, or run `open-feature-dev` on the file, which takes an approved spec as its binding brief. `open-feature-dev` given an issue or free text runs this skill itself first.
+"spec out issue #42", "write a spec for: add a dedupe option to the CSV exporter", "interview me about this task before anyone builds it". The spec goes in the repo's `specs/` or `docs/specs/` directory, or `specs/` if neither exists. Build it in a fresh session from the file, or run `open-feature-dev` on the file, which takes an approved spec as its binding brief. `open-feature-dev` given an issue or free text runs this skill itself first.
 
 ### Lineage
 
@@ -182,6 +172,7 @@ Distilled from the interview and spec steps of these open-source tools, read at 
 - [gotalab/cc-sdd](https://github.com/gotalab/cc-sdd): mechanical checks before judgement, at most two repair passes, then the ambiguity goes back to the user
 - [anthropics/skills](https://github.com/anthropics/skills) `doc-coauthoring` reader testing and [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) `feature-dev`: a fresh reader with only the document; explore before asking, "whatever you think" gets a recommendation and an explicit yes
 - [garrytan/gstack](https://github.com/garrytan/gstack) `office-hours`: stakes-if-wrong on every question, headless fallback when no question tool exists
+- [affaan-m/ECC](https://github.com/affaan-m/ECC) `intent-driven-development`: product and business constraints come from people, never from the code
 
 Requirements engineering: [EARS](https://alistairmavin.com/ears/) for the requirement sentence (ubiquitous, When, While, If/then, Where); the vague-word lists and the warning about "unconscious disambiguation" (a reader takes the first meaning that occurs to them as the only one) from Berry, Kamsties, and Krieger's [ambiguity handbook](https://cs.uwaterloo.ca/~dberry/handbook/ambiguityHandbook.pdf); rules with examples, with open questions as the readiness signal, from [Example Mapping](https://cucumber.io/blog/bdd/example-mapping-introduction/); the Always / Ask first / Never boundaries from Addy Osmani's [How to write a good spec for AI agents](https://addyosmani.com/blog/good-spec/).
 
@@ -203,12 +194,18 @@ Version 1.1 makes four small changes. An approved spec is now a native input of 
 
 Version 1.2 follows the three pages named under open-code-review 4.4. A Compaction rule at the top tells the writer to read the skill file again, then the spec and the notes. The lint no longer re-checks the `[repo]` lines that the cold reader checks against the code; a line added after the cold read is checked as it is written. The spec is committed when the user asks, where the old rule said never. The cold reader's model is named explicitly: Opus at medium on Claude Code, never Fable.
 
+Version 1.3 names no model: the cold reader runs on the session model, which reverses that last sentence. A business or product constraint (an SLA, a retention period, a price, who the user is) is never read off the code, which shows what happens today and not what is wanted; it is asked when the change depends on it and left out otherwise. The lint gains *correctly* and *securely*. The skill reads the lessons file in preflight, as hints that are confirmed against the code, and appends at most three lines at the hand-off.
+
 ## Enforcing the gates
 
-A skill is text the model reads. It usually follows it, and nothing guarantees that it will. Claude Code's [best practices](https://code.claude.com/docs/en/best-practices) draw the line between an instruction the model decides on and a rule the host enforces, and the workflow audit cited above suggests the same from its logs, as an interpretation its authors did not test. The one rule in these skills that should hold every time is that nothing is pushed before the push gate. To have Claude Code ask you itself, whatever the model decided, add a permission rule to `.claude/settings.json`:
+A skill is text the model reads. It usually follows it, and nothing guarantees that it will. Claude Code's [best practices](https://code.claude.com/docs/en/best-practices) draw the line between an instruction the model decides on and a rule the host enforces, and the workflow audit cited above suggests the same from its logs, as an interpretation its authors did not test. The one rule in these skills that should hold every time is that nothing is pushed before the push gate. The plugin ships a hook for that (`hooks/hooks.json`). In any repo that holds an `.open-feature-dev/` workspace, Claude Code asks you to confirm every `git push`, `gh pr create`, and `glab mr create`, whatever the model decided and whether or not the skill was invoked in that session; delete the workspace and the prompts stop. A first version lived in the skill's frontmatter and was dropped after a dry run: a resumed session did not register it again, and its command filter also fired on unrelated commands that contain `$(…)`. A manual symlink install has no hook; use the permission rule below.
+
+Tested on 2026-11-16 in headless sessions (`claude -p`), where an "ask" has nobody to answer it and so shows as a denial. In a repo with a workspace, and without the skill being invoked, the hook stopped `git push`, `git push -u origin HEAD`, `cd . && git push -u origin HEAD`, `git -C <repo> push`, `git -c key=value push`, `gh pr create …`, and `glab mr create …`; it stopped the push in the `default`, `acceptEdits`, `dontAsk`, and `bypassPermissions` modes, and it overrode an allow rule for the same command. `git status`, `git log`, and a command with `$(…)` in it ran untouched, and so did `git push` in a repo with no workspace. The interactive prompt itself was not observed in these runs. The hook reads the command text, so a script or an alias that pushes is not caught: the permission rule below has the same limit, and a server-side branch protection has none.
+
+To get the same prompt in every session, add a permission rule to `.claude/settings.json`:
 
 ```json
 { "permissions": { "ask": ["Bash(git push *)", "Bash(gh pr create *)", "Bash(glab mr create *)"] } }
 ```
 
-All three files keep to the frontmatter the [Agent Skills specification](https://agentskills.io/specification) defines, and `open-code-review` and `open-task-spec` load in Claude Code (`~/.claude/skills`) and Codex (`~/.agents/skills`) unchanged. `open-feature-dev` is Claude Code only since 2.0: it passes a model and an effort level on every subagent dispatch and finds its files through `${CLAUDE_SKILL_DIR}`. The files in its `references/` directory are plain Markdown with no frontmatter.
+The skills are written for Claude Code: they use its skill directory variable and its subagents, and the hook is a Claude Code plugin hook. The three `SKILL.md` files still keep to the frontmatter the [Agent Skills specification](https://agentskills.io/specification) defines. The files in `references/` are plain Markdown with no frontmatter.
