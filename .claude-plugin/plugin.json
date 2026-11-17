@@ -1,0 +1,7 @@
+{
+  "name": "llm-skills",
+  "description": "Three skills for one coding task: open-task-spec interviews you into an exact spec, open-feature-dev ships it as a reviewed pull request, open-code-review reviews a change line by line.",
+  "author": { "name": "Pulak Kanti Bhowmick" },
+  "repository": "https://github.com/pkbhowmick/llm-skills",
+  "license": "Apache-2.0"
+}

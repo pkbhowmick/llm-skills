@@ -1,0 +1,14 @@
+{
+  "name": "pkbhowmick",
+  "description": "Skills for speccing, shipping, and reviewing one coding task in Claude Code.",
+  "owner": {
+    "name": "Pulak Kanti Bhowmick"
+  },
+  "plugins": [
+    {
+      "name": "llm-skills",
+      "source": "./",
+      "description": "open-task-spec, open-feature-dev, and open-code-review: spec, ship, and review one coding task."
+    }
+  ]
+}
